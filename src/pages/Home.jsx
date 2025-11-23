@@ -162,7 +162,7 @@ function Home() {
             </ul>
           </nav>
           <div className="nav-actions">
-            <a className="cta-button" href="/login">
+            <a className="cta-button" href="/login" data-route>
               Login
             </a>
             <a className="cta-button" href="#contact">

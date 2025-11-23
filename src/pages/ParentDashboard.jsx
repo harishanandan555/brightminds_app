@@ -287,15 +287,15 @@ function ParentDashboard() {
   return (
     <div className="parent-page">
       <header className="parent-header">
-        <a href="/" className="parent-brand">
+        <a href="/" className="parent-brand" data-route>
           <span aria-hidden="true">BM</span>
           BrightMinds
         </a>
         <nav aria-label="Parent navigation">
-          <a href="/" className="parent-link">
+          <a href="/" className="parent-link" data-route>
             Product site
           </a>
-          <a href="/login" className="parent-link">
+          <a href="/login" className="parent-link" data-route>
             Switch account
           </a>
         </nav>

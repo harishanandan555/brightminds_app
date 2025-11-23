@@ -43,12 +43,12 @@ function Login() {
     event.preventDefault();
     if (activeRole === "teacher") {
       sessionStorage.setItem("brightMindsRole", "teacher");
-      window.location.href = "/dashboard";
+      window.appNavigate?.("/dashboard");
       return;
     }
 
     sessionStorage.setItem("brightMindsRole", "parent");
-    window.location.href = "/parent";
+    window.appNavigate?.("/parent");
   };
 
   return (
@@ -73,11 +73,11 @@ function Login() {
 
         <main className="login-panel">
           <header className="login-header">
-            <a href="/" className="login-brand">
+            <a href="/" className="login-brand" data-route>
               <span aria-hidden="true">BM</span>
               BrightMinds
             </a>
-            <a href="/" className="login-link">
+            <a href="/" className="login-link" data-route>
               ← Back to product site
             </a>
           </header>

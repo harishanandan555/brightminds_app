@@ -332,15 +332,15 @@ function Dashboard() {
   return (
     <div className="dashboard-page">
       <header className="dashboard-header">
-        <a href="/" className="dashboard-brand">
+        <a href="/" className="dashboard-brand" data-route>
           <span aria-hidden="true">BM</span>
           BrightMinds
         </a>
         <nav aria-label="Dashboard navigation">
-          <a href="/" className="dashboard-link">
+          <a href="/" className="dashboard-link" data-route>
             Product site
           </a>
-          <a href="/login" className="dashboard-link">
+          <a href="/login" className="dashboard-link" data-route>
             Switch account
           </a>
         </nav>
