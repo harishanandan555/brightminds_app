@@ -3,7 +3,11 @@ import ReactDOM from "react-dom/client";
 import { Provider, useSelector } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store/store';
-import api from './api/axios';
+import api, { injectStore } from './api/axios';
+
+// Inject store into axios interceptors
+injectStore(store);
+
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";

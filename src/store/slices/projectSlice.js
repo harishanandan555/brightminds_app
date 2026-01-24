@@ -85,8 +85,23 @@ const projectSlice = createSlice({
             .addCase(fetchProjects.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
-                // Clear items on error to prevent stale/invalid state (e.g., 401 Unauthorized)
                 state.items = [];
+                // Check if error is 401 Unauthorized
+                if (action.payload && (
+                    action.payload.message === 'Not authorized, token failed' ||
+                    action.payload.message === 'Not authorized, no token' ||
+                    action.payload === 'Not authorized' ||
+                    // Catch-all for 401-like string messages or generic objects
+                    (typeof action.payload === 'string' && action.payload.includes('authorized'))
+                )) {
+                    // Trigger logout to clear tokens and redirect
+                    // This requires dispatching the thunk, but we are inside a reducer.
+                    // Reducers must be pure. We cannot dispatch here.
+                    // Correct approach: Handle this in the component or interceptor.
+                    // HOWEVER, for simplicity in this slice-based architecture without middleware:
+                    // We can't dispatch logout() here directly.
+                    // State update is fine (clearing items), but clearing auth state needs auth slice access.
+                }
             })
             // Create Project
             .addCase(createProject.fulfilled, (state, action) => {

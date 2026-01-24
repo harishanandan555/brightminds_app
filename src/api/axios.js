@@ -1,4 +1,10 @@
-import { store } from '../store/store';
+import axios from 'axios';
+
+let store;
+
+export const injectStore = (_store) => {
+    store = _store;
+};
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -8,14 +14,16 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-    // Get token from Redux state
-    const token = store.getState().auth.token;
+    console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
 
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    // Get token from Redux state if store is available
+    if (store) {
+        const token = store.getState().auth.token;
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
     }
 
-    console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
     if (config.headers.Authorization) {
         console.log('[API Request] Authorization header present');
     } else {
@@ -23,5 +31,25 @@ api.interceptors.request.use((config) => {
     }
     return config;
 });
+
+// Response interceptor to handle 401s globally
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            console.warn('[API] 401 Unauthorized detected. Logging out...');
+            // Dispatch logout action via injected store
+            if (store) {
+                store.dispatch({ type: 'auth/logout' });
+            }
+
+            // Optional: Redirect to login if not handled by state change
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default api;

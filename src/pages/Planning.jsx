@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from 'react-redux';
-import { analyzeProject } from '../store/slices/projectSlice';
+import { analyzeProject, updateProject } from '../store/slices/projectSlice';
 import "../styles/dashboard.css"; // Reuse dashboard styles or create new one
 
 const Planning = () => {
@@ -72,6 +72,30 @@ const Planning = () => {
         }
     };
 
+    const handleSave = async () => {
+        console.log('[Planning] handleSave called. projectData:', projectData);
+
+        // Fallback: try to find ID in projectData (could be id or projectId or _id)
+        const idToUse = projectData?.projectId || projectData?.id || projectData?._id;
+
+        if (!idToUse) {
+            console.error('[Planning] Cannot save: No project ID found in projectData', projectData);
+            alert("Cannot save: No project ID found.");
+            return;
+        }
+
+        try {
+            // Update the project with the generated analysis
+            await dispatch(updateProject({
+                id: idToUse,
+                data: { analysis: analysis }
+            }));
+            alert("Analysis saved to project!");
+        } catch (err) {
+            alert("Failed to save analysis.");
+        }
+    };
+
     if (!projectData && !loading) {
         return (
             <div className="dashboard-page">
@@ -118,6 +142,9 @@ const Planning = () => {
                             <button className="ghost-button" onClick={() => generateAnalysis(projectData)} disabled={loading}>
                                 {loading ? "Regenerating..." : "Regenerate"}
                             </button>
+                            <button className="primary-button" onClick={handleSave} disabled={!analysis}>
+                                Save Analysis
+                            </button>
                             <button className="primary-button" onClick={handleCopy} disabled={!analysis}>
                                 Copy to Clipboard
                             </button>
@@ -144,12 +171,29 @@ const Planning = () => {
                                     value={analysis}
                                     onChange={(e) => setAnalysis(e.target.value)}
                                     rows={20}
-                                    style={{ width: '100%', padding: '1rem', lineHeight: '1.6', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '1rem',
+                                        lineHeight: '1.6',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        color: '#333', // Force visible text color
+                                        backgroundColor: '#fff' // Force visible background
+                                    }}
                                 />
                                 {analysis && <div style={{ marginTop: '1rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
                                     <h4>Debug View:</h4>
                                     <pre style={{ whiteSpace: 'pre-wrap' }}>{analysis}</pre>
                                 </div>}
+
+                                {/* Hidden Project Details Section as requested */}
+                                {projectData && (
+                                    <div style={{ display: 'none' }} data-testid="hidden-project-details">
+                                        <input type="hidden" name="projectId" value={projectData.projectId || projectData.id || ''} />
+                                        <input type="hidden" name="studentName" value={projectData.studentName || ''} />
+                                        <pre>{JSON.stringify(projectData, null, 2)}</pre>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
