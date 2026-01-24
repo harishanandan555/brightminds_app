@@ -1,54 +1,27 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from 'react-redux';
+import { loginUser } from '../store/slices/authSlice';
 import "../styles/login.css";
 
-const roleConfigs = {
-  teacher: {
-    title: "Teacher workspace",
-    description:
-      "Plan instruction, capture evidence, and collaborate with your IEP team in minutes—not hours.",
-    benefits: [
-      "Draft goals with AI suggestions tuned to your students",
-      "Log progress notes from any device with smart templates",
-      "See upcoming meetings, deadlines, and assigned action steps",
-    ],
-  },
-  parent: {
-    title: "Family portal",
-    description:
-      "Stay informed, contribute feedback, and celebrate growth with clear, supportive updates.",
-    benefits: [
-      "Real-time translation of teacher updates and goals",
-      "Calendar reminders for meetings and action items",
-      "Guided prompts so you can advocate with confidence",
-    ],
-  },
-};
-
-const DEFAULT_ROLE = "teacher";
-
 function Login() {
-  const initialRole = useMemo(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const paramRole = searchParams.get("role");
-    const isValidRole =
-      paramRole && Object.prototype.hasOwnProperty.call(roleConfigs, paramRole);
-    return isValidRole ? paramRole : DEFAULT_ROLE;
-  }, []);
+  const dispatch = useDispatch();
+  const { loading, error, isAuthenticated, role } = useSelector((state) => state.auth);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const [activeRole, setActiveRole] = useState(initialRole);
-
-  const { title, description, benefits } = roleConfigs[activeRole];
+  useEffect(() => {
+    if (isAuthenticated && role) {
+      if (role === 'teacher') {
+        window.appNavigate?.("/dashboard");
+      } else {
+        window.appNavigate?.("/parent");
+      }
+    }
+  }, [isAuthenticated, role]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (activeRole === "teacher") {
-      sessionStorage.setItem("brightMindsRole", "teacher");
-      window.appNavigate?.("/dashboard");
-      return;
-    }
-
-    sessionStorage.setItem("brightMindsRole", "parent");
-    window.appNavigate?.("/parent");
+    dispatch(loginUser({ email, password }));
   };
 
   return (
@@ -83,29 +56,14 @@ function Login() {
           </header>
 
           <section className="login-card" aria-live="polite">
-            <div className="login-toggle">
-              <button
-                type="button"
-                onClick={() => setActiveRole("teacher")}
-                className={activeRole === "teacher" ? "toggle-button is-active" : "toggle-button"}
-              >
-                Teacher sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveRole("parent")}
-                className={activeRole === "parent" ? "toggle-button is-active" : "toggle-button"}
-              >
-                Parent sign in
-              </button>
-            </div>
-
             <div className="login-copy">
-              <h2 id="login-heading">{title}</h2>
-              <p>{description}</p>
+              <h2 id="login-heading">Sign In</h2>
+              <p>Welcome back! Please enter your details.</p>
             </div>
 
             <form className="login-form" onSubmit={handleSubmit}>
+              {error && <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+
               <label htmlFor="email" className="login-label">
                 Email address
               </label>
@@ -113,6 +71,8 @@ function Login() {
                 id="email"
                 type="email"
                 name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@school.org"
                 autoComplete="email"
                 required
@@ -125,6 +85,8 @@ function Login() {
                 id="password"
                 type="password"
                 name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 required
@@ -140,26 +102,17 @@ function Login() {
                 </a>
               </div>
 
-              <button type="submit" className="login-submit">
-                Sign in
+              <button type="submit" className="login-submit" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign in'}
               </button>
             </form>
 
             <footer className="login-footer">
               <p>Need an account?</p>
-              <a href="#contact" className="login-link">
+              <a href="/register" className="login-link" data-route>
                 Request BrightMinds access
               </a>
             </footer>
-          </section>
-
-          <section className="login-benefits" aria-label={`${title} benefits`}>
-            <h3>What you can do</h3>
-            <ul>
-              {benefits.map((benefit) => (
-                <li key={benefit}>{benefit}</li>
-              ))}
-            </ul>
           </section>
         </main>
       </div>
@@ -168,4 +121,3 @@ function Login() {
 }
 
 export default Login;
-

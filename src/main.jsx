@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
+import { Provider, useSelector } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './store/store';
+import api from './api/axios';
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ParentDashboard from "./pages/ParentDashboard.jsx";
+import Planning from "./pages/Planning.jsx";
 import "./styles/base.css";
 
 const routes = {
   "/": <Home />,
   "/login": <Login />,
+  "/register": <Register />,
   "/dashboard": <Dashboard />,
   "/parent": <ParentDashboard />,
+  "/planning": <Planning />,
 };
 
 const normalizePath = (path = window.location.pathname) => {
@@ -22,6 +30,17 @@ const normalizePath = (path = window.location.pathname) => {
 
 function AppRouter() {
   const [pathname, setPathname] = useState(() => normalizePath());
+
+  // Fix for lost token on refresh
+  const token = useSelector((state) => state.auth.token);
+
+  useEffect(() => {
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete api.defaults.headers.common['Authorization'];
+    }
+  }, [token]);
 
   useEffect(() => {
     const handlePopState = () => setPathname(normalizePath());
@@ -45,9 +64,9 @@ function AppRouter() {
   }, []);
 
   useEffect(() => {
-    window.appNavigate = (path) => {
+    window.appNavigate = (path, state = {}) => {
       if (!path) return;
-      window.history.pushState({}, "", path);
+      window.history.pushState(state, "", path);
       setPathname(normalizePath(path));
     };
     return () => {
@@ -60,7 +79,11 @@ function AppRouter() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <AppRouter />
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <AppRouter />
+      </PersistGate>
+    </Provider>
   </React.StrictMode>,
 );
 

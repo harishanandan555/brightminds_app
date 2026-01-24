@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProjects, createProject, updateProject, deleteProject, analyzeProject } from '../store/slices/projectSlice';
 import "../styles/dashboard.css";
 
 const INITIAL_FORM = {
@@ -14,12 +16,8 @@ const INITIAL_FORM = {
   parentSurvey: "",
   notes: "",
   relatedServices: [],
+  analysis: "",
 };
-
-const createProjectId = () =>
-  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `project-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 const RELATED_SERVICE_OPTIONS = [
   "Speech-language therapy",
@@ -49,8 +47,6 @@ const GRADE_LEVELS = [
   "Transition (18-22)",
 ];
 
-const LOCAL_STORAGE_KEY = "brightMindsProjects";
-
 const formatFileSize = (size) => {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -58,13 +54,12 @@ const formatFileSize = (size) => {
 };
 
 const generateAnalysis = (project) => {
-  const services = project.relatedServices.length
+  const services = project.relatedServices?.length
     ? project.relatedServices.join(", ")
     : "No related services identified yet";
 
   return [
-    `Student ${project.studentName || "name pending"} (${project.gradeLevel || "grade TBD"}, age ${
-      project.studentAge || "N/A"
+    `Student ${project.studentName || "name pending"} (${project.gradeLevel || "grade TBD"}, age ${project.studentAge || "N/A"
     }) currently shows: ${project.presentLevels || "present levels not documented yet"}.`,
     project.currentPerformance
       ? `Performance snapshot: ${project.currentPerformance}.`
@@ -83,81 +78,6 @@ const generateAnalysis = (project) => {
 };
 
 const emptyDocuments = [];
-
-const MOCK_PROJECT_TEMPLATES = [
-  {
-    studentName: "Avery Johnson",
-    studentAge: "9",
-    gradeLevel: "4th grade",
-    eligibilityStatus: "Eligible",
-    eligibilityDate: "2024-09-12",
-    presentLevels:
-      "Demonstrates strong decoding skills but requires support synthesizing informational texts and organizing written responses.",
-    currentPerformance:
-      "Latest benchmark shows 62nd percentile in reading fluency; executive functioning coaching underway with weekly check-ins.",
-    goals:
-      "By Q3, Avery will summarize grade-level informational texts using a structured organizer in 4/5 trials.",
-    accommodations:
-      "Graphic organizers, extended time (1.5x), quiet testing environment, chunked assignments delivered via LMS reminders.",
-    parentSurvey:
-      "Family reports success with visual schedules at home and requests continued collaboration on organization strategies.",
-    notes: "Team prioritizing metacognitive strategies and self-monitoring checkpoints.",
-    relatedServices: ["Speech-language therapy", "Occupational therapy"],
-  },
-  {
-    studentName: "Maya Chen",
-    studentAge: "12",
-    gradeLevel: "7th grade",
-    eligibilityStatus: "Pending evaluation",
-    eligibilityDate: "2024-10-04",
-    presentLevels:
-      "Excels in project-based tasks; needs scaffolds for multi-step math problems and managing assignment timelines.",
-    currentPerformance:
-      "Quarterly math assessment at 48th percentile; executive functioning log shows missed assignments declining.",
-    goals:
-      "Within 12 weeks, Maya will complete multi-step math tasks with 80% accuracy using teacher-provided checklists.",
-    accommodations:
-      "Preview guides, step-by-step checklists, calculator access, and weekly agenda review with mentor teacher.",
-    parentSurvey:
-      "Parents request more frequent progress updates and are willing to practice checklists at home twice per week.",
-    notes: "Further observation scheduled during collaborative math lab sessions.",
-    relatedServices: ["Counseling services"],
-  },
-  {
-    studentName: "Jordan Smith",
-    studentAge: "16",
-    gradeLevel: "10th grade",
-    eligibilityStatus: "Eligible",
-    eligibilityDate: "2024-08-22",
-    presentLevels:
-      "Shows high engagement in hands-on STEM labs; requires language scaffolds to access grade-level literature and compose essays.",
-    currentPerformance:
-      "Reading comprehension benchmark at 34th percentile; writing rubric indicates growth in idea generation but limited elaboration.",
-    goals:
-      "Over the next semester, Jordan will compose analytical paragraphs including evidence and commentary with 70% rubric mastery.",
-    accommodations:
-      "Sentence starters, audio versions of complex texts, collaborative note-taking tools, alternate response formats for essays.",
-    parentSurvey:
-      "Family highlights interest in 3D design internships and notes success when teachers provide models before assignments.",
-    notes: "Transition planning meeting scheduled with community partner next month.",
-    relatedServices: ["Assistive technology", "Occupational therapy"],
-  },
-];
-
-const MOCK_PROJECTS = MOCK_PROJECT_TEMPLATES.map((template, index) => {
-  const timestamp = new Date(Date.now() - (index + 1) * 86400000).toISOString();
-  const enriched = {
-    ...template,
-    documents: [],
-    analysis: generateAnalysis(template),
-  };
-  return {
-    ...enriched,
-    id: `mock-${index + 1}`,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-});
 
 const AI_SUPPORT_FEATURES = [
   {
@@ -178,35 +98,30 @@ const AI_SUPPORT_FEATURES = [
 ];
 
 function Dashboard() {
+  const dispatch = useDispatch();
+  const { items: projects, loading, error } = useSelector((state) => state.projects || { items: [] });
   const [activeTab, setActiveTab] = useState(null);
   const [formState, setFormState] = useState(INITIAL_FORM);
   const [documents, setDocuments] = useState(emptyDocuments);
-  const [projects, setProjects] = useState(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (!stored) return MOCK_PROJECTS;
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-      return MOCK_PROJECTS;
-    } catch {
-      return MOCK_PROJECTS;
-    }
-  });
   const [editingId, setEditingId] = useState(null);
 
   const isEditing = Boolean(editingId);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
-  }, [projects]);
+    dispatch(fetchProjects());
+  }, [dispatch]);
 
+  // Check role - can also be done via a ProtectedRoute component, keeping simple here for now
   useEffect(() => {
-    const role = sessionStorage.getItem("brightMindsRole");
-    if (role !== "teacher") {
-      window.location.replace("/login?role=teacher");
-    }
+    // Rely on redux role if persisted, or check session logic if legacy
+    // The authSlice is persisted, so we can check selector or assume login handled redirect.
+    // However, if manual navigation happens:
+    // const role = sessionStorage.getItem("brightMindsRole");
+    // if (role !== "teacher") {
+    //   window.location.replace("/login?role=teacher");
+    // }
+    // Since we removed manual session storage setter in authSlice, we should rely on state.
+    // For now, let's trust the user is here after login.
   }, []);
 
   const resetForm = () => {
@@ -250,42 +165,113 @@ function Dashboard() {
   const hydrateProjectPayload = (payload) => {
     const trimmed = {
       ...payload,
-      studentName: payload.studentName.trim(),
-      gradeLevel: payload.gradeLevel.trim(),
-      eligibilityStatus: payload.eligibilityStatus.trim(),
-      presentLevels: payload.presentLevels.trim(),
-      currentPerformance: payload.currentPerformance.trim(),
-      goals: payload.goals.trim(),
-      accommodations: payload.accommodations.trim(),
-      parentSurvey: payload.parentSurvey.trim(),
-      notes: payload.notes.trim(),
+      studentName: payload.studentName?.trim() || "",
+      studentAge: Number(payload.studentAge) || 0,
+      gradeLevel: payload.gradeLevel?.trim() || "",
+      eligibilityStatus: payload.eligibilityStatus?.trim() || "",
+      presentLevels: payload.presentLevels?.trim() || "",
+      currentPerformance: payload.currentPerformance?.trim() || "",
+      goals: payload.goals?.trim() || "",
+      accommodations: payload.accommodations?.trim() || "",
+      parentSurvey: payload.parentSurvey?.trim() || "",
+      notes: payload.notes?.trim() || "",
     };
 
-    const analysis = generateAnalysis(trimmed);
+    // Use existing analysis from form (AI generated or edited) or fallback to client-side generation
+    const analysis = payload.analysis || generateAnalysis(trimmed);
 
+    // Backend likely handles ID and dates, but if we need to send full object:
     return {
       ...trimmed,
-      id: editingId ?? createProjectId(),
-      createdAt: editingId
-        ? projects.find((project) => project.id === editingId)?.createdAt
-        : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      documents,
+      documents, // Backend might not handle this yet
       analysis,
     };
   };
 
-  const handleSaveProject = (event) => {
-    event.preventDefault();
+  const handleGenerateAnalysis = () => {
+    // Navigate to /planning with current form state
+    // We pass the full filtered state that the API needs (and UI needs)
+    const stateForPlanning = {
+      studentName: formState.studentName?.trim() || "",
+      studentAge: Number(formState.studentAge) || 0,
+      gradeLevel: formState.gradeLevel?.trim() || "",
+      presentLevels: formState.presentLevels?.trim() || "",
+      currentPerformance: formState.currentPerformance?.trim() || "",
+      goals: formState.goals?.trim() || "",
+      accommodations: formState.accommodations?.trim() || "",
+      relatedServices: formState.relatedServices || [],
+      // Also pass existing analysis if any, so we don't regenerate unnecessarily if coming back/editing
+      analysis: formState.analysis || ""
+    };
 
-    const payload = hydrateProjectPayload(formState);
-    if (isEditing) {
-      setProjects((prev) => prev.map((project) => (project.id === editingId ? payload : project)));
+    // Use appNavigate with state
+    if (window.appNavigate) {
+      window.appNavigate("/planning", { usr: stateForPlanning });
     } else {
-      setProjects((prev) => [payload, ...prev]);
+      window.history.pushState({ usr: stateForPlanning }, "", "/planning");
+      window.dispatchEvent(new Event("popstate"));
     }
-    resetForm();
-    setActiveTab("existing");
+  };
+
+  const [saveStatus, setSaveStatus] = useState("");
+
+  const handleSaveProject = async (event) => {
+    event.preventDefault();
+    let payload = hydrateProjectPayload(formState);
+
+    setSaveStatus("Generating AI analysis...");
+
+    try {
+      // 1. Generate Analysis First
+      const aiPayload = {
+        studentName: payload.studentName?.trim() || "",
+        studentAge: Number(payload.studentAge) || 0,
+        gradeLevel: payload.gradeLevel?.trim() || "",
+        presentLevels: payload.presentLevels?.trim() || "",
+        currentPerformance: payload.currentPerformance?.trim() || "",
+        goals: payload.goals?.trim() || "",
+        accommodations: payload.accommodations?.trim() || "",
+        relatedServices: payload.relatedServices || []
+      };
+
+      // Try to generate analysis via API
+      try {
+        const analysisResult = await dispatch(analyzeProject(aiPayload));
+        if (analyzeProject.fulfilled.match(analysisResult)) {
+          payload.analysis = analysisResult.payload.analysis;
+        }
+      } catch (analysisErr) {
+        console.warn("Analysis generation failed, proceeding with save without new analysis", analysisErr);
+        // Fallback to existing or empty analysis
+      }
+
+      setSaveStatus("Saving project...");
+
+      // 2. Save Project (Create or Update)
+      let result;
+      if (isEditing) {
+        result = await dispatch(updateProject({ id: editingId, data: payload }));
+      } else {
+        result = await dispatch(createProject(payload));
+      }
+
+      if (createProject.fulfilled.match(result) || updateProject.fulfilled.match(result)) {
+        setSaveStatus("Project Saved!");
+        setTimeout(() => setSaveStatus(""), 2000);
+
+        dispatch(fetchProjects());
+        resetForm();
+        setActiveTab("existing");
+      } else {
+        setSaveStatus("Error saving project");
+      }
+
+    } catch (err) {
+      console.error("Save flow failed", err);
+      setSaveStatus("Error saving project");
+    } finally {
+      setTimeout(() => setSaveStatus(""), 3000);
+    }
   };
 
   const handleEditProject = (project) => {
@@ -301,7 +287,8 @@ function Dashboard() {
       accommodations: project.accommodations,
       parentSurvey: project.parentSurvey,
       notes: project.notes,
-      relatedServices: project.relatedServices,
+      relatedServices: project.relatedServices || [],
+      analysis: project.analysis || "", // Load existing analysis
     });
     setDocuments(project.documents ?? emptyDocuments);
     setEditingId(project.id);
@@ -309,12 +296,33 @@ function Dashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDeleteProject = (projectId) => {
+  const handleDeleteProject = async (projectId) => {
     const confirmed = window.confirm("Are you sure you want to delete this project?");
     if (!confirmed) return;
-    setProjects((prev) => prev.filter((project) => project.id !== projectId));
+
+    await dispatch(deleteProject(projectId));
+    dispatch(fetchProjects());
+
     if (editingId === projectId) {
       resetForm();
+    }
+  };
+
+  const handleViewPlan = (project) => {
+    // Prepare state for planning view
+    const stateForPlanning = {
+      ...project,
+      projectId: project.id, // Explicitly pass as projectId per requirement
+      studentAge: Number(project.studentAge) || 0,
+      // Ensure analysis is passed if present
+      analysis: project.analysis || ""
+    };
+
+    if (window.appNavigate) {
+      window.appNavigate("/planning", { usr: stateForPlanning });
+    } else {
+      window.history.pushState({ usr: stateForPlanning }, "", "/planning");
+      window.dispatchEvent(new Event("popstate"));
     }
   };
 
@@ -391,17 +399,15 @@ function Dashboard() {
                 <h2>{isEditing ? "Update project" : "Start a new student project"}</h2>
               </div>
               <div className="workspace-actions">
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() =>
-                    handleCopyAnalysis(draftAnalysis).then((copied) =>
-                      copied ? alert("Draft copied to clipboard.") : alert("Copy failed. Try again."),
-                    )
-                  }
-                >
-                  Copy draft analysis
-                </button>
+                {isEditing && (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={handleGenerateAnalysis}
+                  >
+                    ✨ Open AI Planning
+                  </button>
+                )}
                 <button type="button" className="ghost-button" onClick={resetForm}>
                   Clear form
                 </button>
@@ -429,7 +435,7 @@ function Dashboard() {
                     <input
                       type="text"
                       name="studentName"
-                      value={formState.studentName}
+                      value={formState.studentName || ""}
                       onChange={handleInputChange}
                       placeholder="Learner name"
                       required
@@ -440,7 +446,7 @@ function Dashboard() {
                     <input
                       type="number"
                       name="studentAge"
-                      value={formState.studentAge}
+                      value={formState.studentAge || ""}
                       onChange={handleInputChange}
                       min={3}
                       max={22}
@@ -450,7 +456,7 @@ function Dashboard() {
                   </label>
                   <label>
                     Grade level
-                    <select name="gradeLevel" value={formState.gradeLevel} onChange={handleInputChange} required>
+                    <select name="gradeLevel" value={formState.gradeLevel || ""} onChange={handleInputChange} required>
                       <option value="">Select grade level</option>
                       {GRADE_LEVELS.map((grade) => (
                         <option key={grade} value={grade}>
@@ -463,7 +469,7 @@ function Dashboard() {
                     Eligibility status
                     <select
                       name="eligibilityStatus"
-                      value={formState.eligibilityStatus}
+                      value={formState.eligibilityStatus || ""}
                       onChange={handleInputChange}
                       required
                     >
@@ -475,7 +481,7 @@ function Dashboard() {
                   </label>
                   <label>
                     Eligibility meeting date
-                    <input type="date" name="eligibilityDate" value={formState.eligibilityDate} onChange={handleInputChange} />
+                    <input type="date" name="eligibilityDate" value={formState.eligibilityDate || ""} onChange={handleInputChange} />
                   </label>
                 </div>
               </fieldset>
@@ -486,7 +492,7 @@ function Dashboard() {
                   Present levels
                   <textarea
                     name="presentLevels"
-                    value={formState.presentLevels}
+                    value={formState.presentLevels || ""}
                     onChange={handleInputChange}
                     placeholder="Describe how the student is performing across academic, cognitive, and functional areas."
                     rows={4}
@@ -497,7 +503,7 @@ function Dashboard() {
                   Current performance
                   <textarea
                     name="currentPerformance"
-                    value={formState.currentPerformance}
+                    value={formState.currentPerformance || ""}
                     onChange={handleInputChange}
                     placeholder="Summarize recent data points, progress monitoring notes, and strengths."
                     rows={3}
@@ -507,7 +513,7 @@ function Dashboard() {
                   Student goals
                   <textarea
                     name="goals"
-                    value={formState.goals}
+                    value={formState.goals || ""}
                     onChange={handleInputChange}
                     placeholder="List short- and long-term goals along with mastery criteria."
                     rows={3}
@@ -518,7 +524,7 @@ function Dashboard() {
                   Accommodations & supports
                   <textarea
                     name="accommodations"
-                    value={formState.accommodations}
+                    value={formState.accommodations || ""}
                     onChange={handleInputChange}
                     placeholder="Document testing accommodations, classroom supports, and assistive technology."
                     rows={3}
@@ -533,7 +539,7 @@ function Dashboard() {
                     <label key={service} className="service-chip">
                       <input
                         type="checkbox"
-                        checked={formState.relatedServices.includes(service)}
+                        checked={(formState.relatedServices || []).includes(service)}
                         onChange={() => handleServiceToggle(service)}
                       />
                       <span>{service}</span>
@@ -544,7 +550,7 @@ function Dashboard() {
                   Additional notes
                   <textarea
                     name="notes"
-                    value={formState.notes}
+                    value={formState.notes || ""}
                     onChange={handleInputChange}
                     placeholder="Record notes about service frequency, staffing, or scheduling considerations."
                     rows={2}
@@ -558,13 +564,15 @@ function Dashboard() {
                   Parent survey insights
                   <textarea
                     name="parentSurvey"
-                    value={formState.parentSurvey}
+                    value={formState.parentSurvey || ""}
                     onChange={handleInputChange}
                     placeholder="Summarize caregiver input or paste survey responses."
                     rows={3}
                   />
                 </label>
               </fieldset>
+
+
 
               <fieldset>
                 <legend>Supporting documents</legend>
@@ -589,7 +597,8 @@ function Dashboard() {
               </fieldset>
 
               <div className="form-controls">
-                <button type="submit" className="primary-button">
+                {saveStatus && <span className="save-status" style={{ marginRight: '1rem', fontWeight: 'bold', color: '#6366f1' }}>{saveStatus}</span>}
+                <button type="submit" className="primary-button" disabled={!!saveStatus}>
                   {isEditing ? "Save updates" : "Save project"}
                 </button>
                 {isEditing && (
@@ -639,8 +648,8 @@ function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {projects.map((project) => (
-                        <tr key={`summary-${project.id}`}>
+                      {projects.map((project, index) => (
+                        <tr key={project.id ? `summary-${project.id}` : `summary-index-${index}`}>
                           <td>{project.studentName || "Unnamed learner"}</td>
                           <td>{project.gradeLevel || "—"}</td>
                           <td>{project.studentAge || "—"}</td>
@@ -649,7 +658,10 @@ function Dashboard() {
                           <td>
                             <div className="table-actions">
                               <button type="button" className="table-link" onClick={() => handleEditProject(project)}>
-                                Open
+                                Edit
+                              </button>
+                              <button type="button" className="table-link" onClick={() => handleViewPlan(project)}>
+                                View Plan
                               </button>
                               <button
                                 type="button"

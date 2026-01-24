@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { fetchProjects, createProject, updateProject, deleteProject } from '../store/slices/projectSlice';
+import { logout } from '../store/slices/authSlice';
 import "../styles/parent.css";
 
 const INITIAL_FORM = {
@@ -44,13 +48,6 @@ const GRADE_LEVELS = [
   "Transition (18-22)",
 ];
 
-const LOCAL_STORAGE_KEY = "brightMindsParentProjects";
-
-const createRecordId = () =>
-  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `parent-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
 const formatFileSize = (size) => {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -58,13 +55,12 @@ const formatFileSize = (size) => {
 };
 
 const generateAnalysis = (project) => {
-  const services = project.relatedServices.length
+  const services = project.relatedServices?.length
     ? project.relatedServices.join(", ")
     : "No related services identified yet";
 
   return [
-    `Student ${project.studentName || "name pending"} (${project.gradeLevel || "grade TBD"}, age ${
-      project.studentAge || "N/A"
+    `Student ${project.studentName || "name pending"} (${project.gradeLevel || "grade TBD"}, age ${project.studentAge || "N/A"
     }) currently shows: ${project.presentLevels || "present levels not documented yet"}.`,
     project.currentPerformance
       ? `Performance snapshot: ${project.currentPerformance}.`
@@ -82,74 +78,16 @@ const generateAnalysis = (project) => {
 
 const emptyDocuments = [];
 
-const MOCK_PARENT_TEMPLATES = [
-  {
-    studentName: "Noah Williams",
-    studentAge: "10",
-    gradeLevel: "5th grade",
-    eligibilityStatus: "Eligible",
-    eligibilityDate: "2024-07-18",
-    presentLevels:
-      "Noah loves science experiments and coding clubs; needs structure for multi-step writing assignments and homework planning.",
-    currentPerformance:
-      "Teacher reports show 70% task completion with visual checklists; family observes smoother evenings when routines are previewed.",
-    goals:
-      "Increase independence with nightly homework checklist and demonstrate grade-level writing structure with graphic organizers.",
-    accommodations:
-      "Visual schedules, teacher check-ins at homework send-off, keyboard for longer writing tasks, chunked assignments.",
-    parentSurvey:
-      "Family would like weekly summaries and is eager to try shared digital planners with reminders.",
-    notes: "Exploring community STEM clubs for extended engagement.",
-    relatedServices: ["Occupational therapy"],
-  },
-  {
-    studentName: "Lila Martinez",
-    studentAge: "7",
-    gradeLevel: "2nd grade",
-    eligibilityStatus: "Pending evaluation",
-    eligibilityDate: "2024-08-30",
-    presentLevels:
-      "Thrives in art and music; currently working on speech articulation and reading fluency with school supports.",
-    currentPerformance:
-      "Speech therapist notes progress on target sounds; reading progress monitoring at 45th percentile with phonics games.",
-    goals:
-      "Practice weekly read-aloud sessions and reinforce articulation exercises at home with the shared tracking sheet.",
-    accommodations:
-      "Small-group reading support, visual phonics cards, speech practice apps recommended by therapist.",
-    parentSurvey:
-      "Parents request more ideas for articulation play during routines and want to share their observations weekly.",
-    notes: "Family appreciates reminders before meetings and progress updates in Spanish.",
-    relatedServices: ["Speech-language therapy"],
-  },
-];
-
-const MOCK_PARENT_RECORDS = MOCK_PARENT_TEMPLATES.map((template, index) => {
-  const timestamp = new Date(Date.now() - (index + 1) * 86400000).toISOString();
-  const analysis = generateAnalysis(template);
-  return {
-    ...template,
-    id: `mock-parent-${index + 1}`,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    documents: [],
-    analysis,
-  };
-});
-
 function ParentDashboard() {
-  const [records, setRecords] = useState(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (!stored) return MOCK_PARENT_RECORDS;
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-      return MOCK_PARENT_RECORDS;
-    } catch {
-      return MOCK_PARENT_RECORDS;
-    }
-  });
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { items: records, loading, error } = useSelector((state) => state.projects || { items: [] });
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
+
   const [formState, setFormState] = useState(INITIAL_FORM);
   const [documents, setDocuments] = useState(emptyDocuments);
   const [editingId, setEditingId] = useState(null);
@@ -157,15 +95,14 @@ function ParentDashboard() {
   const isEditing = Boolean(editingId);
 
   useEffect(() => {
-    const role = sessionStorage.getItem("brightMindsRole");
-    if (role !== "parent") {
-      window.location.replace("/login?role=parent");
-    }
-  }, []);
+    dispatch(fetchProjects());
+  }, [dispatch]);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(records));
-  }, [records]);
+    // Optional: Check role logic if strict redirect needed, but usually redundant with protected routes
+    // const role = sessionStorage.getItem("brightMindsRole");
+    // if (role !== "parent") { ... }
+  }, []);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -211,6 +148,7 @@ function ParentDashboard() {
     const trimmed = {
       ...payload,
       studentName: payload.studentName.trim(),
+      studentAge: Number(payload.studentAge) || 0,
       gradeLevel: payload.gradeLevel.trim(),
       eligibilityStatus: payload.eligibilityStatus.trim(),
       presentLevels: payload.presentLevels.trim(),
@@ -225,24 +163,20 @@ function ParentDashboard() {
 
     return {
       ...trimmed,
-      id: editingId ?? createRecordId(),
-      createdAt: editingId
-        ? records.find((record) => record.id === editingId)?.createdAt
-        : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       documents,
       analysis,
     };
   };
 
-  const handleSave = (event) => {
+  const handleSave = async (event) => {
     event.preventDefault();
     const payload = hydratePayload(formState);
     if (isEditing) {
-      setRecords((prev) => prev.map((record) => (record.id === editingId ? payload : record)));
+      await dispatch(updateProject({ id: editingId, data: payload }));
     } else {
-      setRecords((prev) => [payload, ...prev]);
+      await dispatch(createProject(payload));
     }
+    dispatch(fetchProjects());
     resetForm();
   };
 
@@ -268,17 +202,20 @@ function ParentDashboard() {
       accommodations: record.accommodations,
       parentSurvey: record.parentSurvey,
       notes: record.notes,
-      relatedServices: record.relatedServices,
+      relatedServices: record.relatedServices || [],
     });
     setDocuments(record.documents ?? emptyDocuments);
     setEditingId(record.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDeleteRecord = (recordId) => {
+  const handleDeleteRecord = async (recordId) => {
     const confirmed = window.confirm("Are you sure you want to delete this entry?");
     if (!confirmed) return;
-    setRecords((prev) => prev.filter((record) => record.id !== recordId));
+
+    await dispatch(deleteProject(recordId));
+    dispatch(fetchProjects());
+
     if (editingId === recordId) {
       resetForm();
     }
@@ -295,9 +232,9 @@ function ParentDashboard() {
           <a href="/" className="parent-link" data-route>
             Product site
           </a>
-          <a href="/login" className="parent-link" data-route>
-            Switch account
-          </a>
+          <button onClick={handleLogout} className="parent-link" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textDecoration: 'underline' }}>
+            Logout
+          </button>
         </nav>
       </header>
 
