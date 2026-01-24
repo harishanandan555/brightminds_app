@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { fetchProjects, createProject, updateProject, deleteProject } from '../store/slices/projectSlice';
+import { fetchChildren, addChild, updateChild, deleteChild } from '../store/slices/parentSlice';
 import { logout } from '../store/slices/authSlice';
 import "../styles/parent.css";
 
@@ -9,8 +8,8 @@ const INITIAL_FORM = {
   studentName: "",
   studentAge: "",
   gradeLevel: "",
-  eligibilityStatus: "",
-  eligibilityDate: "",
+
+
   presentLevels: "",
   currentPerformance: "",
   goals: "",
@@ -80,12 +79,10 @@ const emptyDocuments = [];
 
 function ParentDashboard() {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { items: records, loading, error } = useSelector((state) => state.projects || { items: [] });
-
+  const { items: projects } = useSelector((state) => state.parent);
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login');
+    window.location.href = '/login';
   };
 
   const [formState, setFormState] = useState(INITIAL_FORM);
@@ -95,7 +92,7 @@ function ParentDashboard() {
   const isEditing = Boolean(editingId);
 
   useEffect(() => {
-    dispatch(fetchProjects());
+    dispatch(fetchChildren());
   }, [dispatch]);
 
   useEffect(() => {
@@ -150,7 +147,7 @@ function ParentDashboard() {
       studentName: payload.studentName.trim(),
       studentAge: Number(payload.studentAge) || 0,
       gradeLevel: payload.gradeLevel.trim(),
-      eligibilityStatus: payload.eligibilityStatus.trim(),
+
       presentLevels: payload.presentLevels.trim(),
       currentPerformance: payload.currentPerformance.trim(),
       goals: payload.goals.trim(),
@@ -172,11 +169,11 @@ function ParentDashboard() {
     event.preventDefault();
     const payload = hydratePayload(formState);
     if (isEditing) {
-      await dispatch(updateProject({ id: editingId, data: payload }));
+      await dispatch(updateChild({ id: editingId, data: payload }));
     } else {
-      await dispatch(createProject(payload));
+      await dispatch(addChild(payload));
     }
-    dispatch(fetchProjects());
+    dispatch(fetchChildren());
     resetForm();
   };
 
@@ -194,8 +191,8 @@ function ParentDashboard() {
       studentName: record.studentName,
       studentAge: record.studentAge,
       gradeLevel: record.gradeLevel,
-      eligibilityStatus: record.eligibilityStatus,
-      eligibilityDate: record.eligibilityDate,
+
+
       presentLevels: record.presentLevels,
       currentPerformance: record.currentPerformance,
       goals: record.goals,
@@ -213,8 +210,8 @@ function ParentDashboard() {
     const confirmed = window.confirm("Are you sure you want to delete this entry?");
     if (!confirmed) return;
 
-    await dispatch(deleteProject(recordId));
-    dispatch(fetchProjects());
+    await dispatch(deleteChild(recordId));
+    dispatch(fetchChildren());
 
     if (editingId === recordId) {
       resetForm();
@@ -295,24 +292,8 @@ function ParentDashboard() {
                     ))}
                   </select>
                 </label>
-                <label>
-                  Eligibility status
-                  <select
-                    name="eligibilityStatus"
-                    value={formState.eligibilityStatus}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select status</option>
-                    <option value="Eligible">Eligible</option>
-                    <option value="Ineligible">Ineligible</option>
-                    <option value="Pending evaluation">Pending evaluation</option>
-                  </select>
-                </label>
-                <label>
-                  Eligibility meeting date
-                  <input type="date" name="eligibilityDate" value={formState.eligibilityDate} onChange={handleInputChange} />
-                </label>
+
+
               </div>
             </fieldset>
 
@@ -443,7 +424,7 @@ function ParentDashboard() {
             <p>Review earlier entries, copy summaries, or update details when things change.</p>
           </div>
 
-          {records.length === 0 ? (
+          {projects.length === 0 ? (
             <div className="parent-empty">
               <h3>No entries yet</h3>
               <p>Share your child\'s story above to begin building a history the team can reference.</p>
@@ -457,18 +438,18 @@ function ParentDashboard() {
                       <th scope="col">Student</th>
                       <th scope="col">Grade level</th>
                       <th scope="col">Age</th>
-                      <th scope="col">Eligibility</th>
+
                       <th scope="col">Last updated</th>
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {records.map((record) => (
+                    {projects.map((record) => (
                       <tr key={`parent-record-${record.id}`}>
                         <td>{record.studentName || "Unnamed learner"}</td>
                         <td>{record.gradeLevel || "—"}</td>
                         <td>{record.studentAge || "—"}</td>
-                        <td>{record.eligibilityStatus || "—"}</td>
+
                         <td>{new Date(record.updatedAt).toLocaleDateString()}</td>
                         <td>
                           <div className="parent-table-actions">

@@ -18,11 +18,8 @@ const projectSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    eligibilityStatus: {
-        type: String,
-        required: true,
-    },
-    eligibilityDate: Date,
+
+
     presentLevels: String,
     currentPerformance: String,
     goals: String,

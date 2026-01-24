@@ -17,7 +17,9 @@ export const loginUser = createAsyncThunk(
         try {
             // 1. Login to get token
             const loginResponse = await loginApi(credentials);
+            console.log('[Auth] Login response:', loginResponse);
             const { token } = loginResponse;
+            console.log('[Auth] Token extracted:', token);
 
             if (token) {
                 // Set the token in the axios instance defaults for subsequent requests

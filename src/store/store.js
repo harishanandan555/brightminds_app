@@ -3,6 +3,7 @@ import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import authReducer from './slices/authSlice';
 import projectReducer from './slices/projectSlice';
+import parentReducer from './slices/parentSlice';
 
 const persistConfig = {
     key: 'root',
@@ -16,6 +17,7 @@ export const store = configureStore({
     reducer: {
         auth: persistedReducer,
         projects: projectReducer,
+        parent: parentReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

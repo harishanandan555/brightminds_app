@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProjects, createProject, updateProject, deleteProject, analyzeProject } from '../store/slices/projectSlice';
+import { logout } from '../store/slices/authSlice';
+import { persistor } from '../store/store';
 import "../styles/dashboard.css";
 
 const INITIAL_FORM = {
   studentName: "",
   studentAge: "",
   gradeLevel: "",
-  eligibilityStatus: "",
-  eligibilityDate: "",
+
+
   presentLevels: "",
   currentPerformance: "",
   goals: "",
@@ -81,7 +83,7 @@ const emptyDocuments = [];
 
 const AI_SUPPORT_FEATURES = [
   {
-    title: "AI Goal Builder",
+    title: "Smart Goal Builder",
     description:
       "Generate measurable, standards-aligned targets in seconds while keeping educator voice front and center.",
   },
@@ -168,7 +170,7 @@ function Dashboard() {
       studentName: payload.studentName?.trim() || "",
       studentAge: Number(payload.studentAge) || 0,
       gradeLevel: payload.gradeLevel?.trim() || "",
-      eligibilityStatus: payload.eligibilityStatus?.trim() || "",
+
       presentLevels: payload.presentLevels?.trim() || "",
       currentPerformance: payload.currentPerformance?.trim() || "",
       goals: payload.goals?.trim() || "",
@@ -219,7 +221,7 @@ function Dashboard() {
     event.preventDefault();
     let payload = hydrateProjectPayload(formState);
 
-    setSaveStatus("Generating AI analysis...");
+    setSaveStatus("Generating analysis...");
 
     try {
       // 1. Generate Analysis First
@@ -279,8 +281,8 @@ function Dashboard() {
       studentName: project.studentName,
       studentAge: project.studentAge,
       gradeLevel: project.gradeLevel,
-      eligibilityStatus: project.eligibilityStatus,
-      eligibilityDate: project.eligibilityDate,
+
+
       presentLevels: project.presentLevels,
       currentPerformance: project.currentPerformance,
       goals: project.goals,
@@ -348,9 +350,13 @@ function Dashboard() {
           <a href="/" className="dashboard-link" data-route>
             Product site
           </a>
-          <a href="/login" className="dashboard-link" data-route>
+          <button onClick={async () => {
+            dispatch(logout());
+            await persistor.purge(); // Ensure storage is cleared
+            window.location.href = '/login';
+          }} className="dashboard-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}>
             Switch account
-          </a>
+          </button>
         </nav>
       </header>
 
@@ -387,7 +393,7 @@ function Dashboard() {
           <section className="workspace-placeholder" aria-label="Select a workspace">
             <h2>Choose a workspace to get started</h2>
             <p>
-              Launch a new AI-assisted project or review your existing caseload. You can switch back at any time using the buttons above.
+              Launch a new smart-assisted project or review your existing caseload. You can switch back at any time using the buttons above.
             </p>
           </section>
         )}
@@ -405,7 +411,7 @@ function Dashboard() {
                     className="ghost-button"
                     onClick={handleGenerateAnalysis}
                   >
-                    ✨ Open AI Planning
+                    ✨ Open Smart Planning
                   </button>
                 )}
                 <button type="button" className="ghost-button" onClick={resetForm}>
@@ -415,7 +421,7 @@ function Dashboard() {
             </header>
 
             <div className="ai-support">
-              <h3>AI-assisted planning highlights</h3>
+              <h3>Intelligent planning highlights</h3>
               <div className="ai-feature-grid">
                 {AI_SUPPORT_FEATURES.map((feature) => (
                   <article key={feature.title} className="ai-feature-card">
@@ -465,24 +471,8 @@ function Dashboard() {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    Eligibility status
-                    <select
-                      name="eligibilityStatus"
-                      value={formState.eligibilityStatus || ""}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select status</option>
-                      <option value="Eligible">Eligible</option>
-                      <option value="Ineligible">Ineligible</option>
-                      <option value="Pending evaluation">Pending evaluation</option>
-                    </select>
-                  </label>
-                  <label>
-                    Eligibility meeting date
-                    <input type="date" name="eligibilityDate" value={formState.eligibilityDate || ""} onChange={handleInputChange} />
-                  </label>
+
+
                 </div>
               </fieldset>
 
@@ -642,7 +632,7 @@ function Dashboard() {
                         <th scope="col">Student</th>
                         <th scope="col">Grade level</th>
                         <th scope="col">Age</th>
-                        <th scope="col">Eligibility</th>
+
                         <th scope="col">Last updated</th>
                         <th scope="col">Actions</th>
                       </tr>
@@ -653,7 +643,7 @@ function Dashboard() {
                           <td>{project.studentName || "Unnamed learner"}</td>
                           <td>{project.gradeLevel || "—"}</td>
                           <td>{project.studentAge || "—"}</td>
-                          <td>{project.eligibilityStatus || "—"}</td>
+
                           <td>{new Date(project.updatedAt).toLocaleDateString()}</td>
                           <td>
                             <div className="table-actions">
@@ -662,17 +652,6 @@ function Dashboard() {
                               </button>
                               <button type="button" className="table-link" onClick={() => handleViewPlan(project)}>
                                 View Plan
-                              </button>
-                              <button
-                                type="button"
-                                className="table-link"
-                                onClick={() =>
-                                  handleCopyAnalysis(project.analysis).then((copied) =>
-                                    copied ? alert("Project analysis copied.") : alert("Copy failed. Try again."),
-                                  )
-                                }
-                              >
-                                Copy
                               </button>
                               <button
                                 type="button"

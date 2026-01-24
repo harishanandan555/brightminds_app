@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
+import parentRoutes from './routes/parentRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ connectDB();
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/projects', projectRoutes);
+app.use('/api/v1/parent', parentRoutes);
 
 // Root Route
 app.get('/', (req, res) => {

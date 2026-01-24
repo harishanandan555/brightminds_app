@@ -33,7 +33,7 @@ function Login() {
             <span className="login-pill">BrightMinds</span>
             <h1>Where teachers and families build smarter IEP journeys.</h1>
             <p>
-              Purpose-built AI and collaboration workflows that keep everyone aligned on student
+              Purpose-built intelligence and collaboration workflows that keep everyone aligned on student
               outcomes, security-first by design.
             </p>
             <ul>

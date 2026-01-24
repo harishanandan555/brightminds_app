@@ -32,7 +32,7 @@ const Planning = () => {
         setError(null);
 
         try {
-            // Construct payload strictly for AI analysis endpoint
+            // Construct payload strictly for analysis endpoint
             const aiPayload = {
                 studentName: data.studentName?.trim() || "",
                 studentAge: Number(data.studentAge) || 0,
@@ -127,7 +127,7 @@ const Planning = () => {
             <main className="dashboard-main">
                 <section className="dashboard-hero">
                     <div className="hero-content">
-                        <h1>AI Planning Assistant</h1>
+                        <h1>Planning Assistant</h1>
                         <p>Generating insights for <strong>{projectData?.studentName}</strong></p>
                     </div>
                 </section>
@@ -136,7 +136,7 @@ const Planning = () => {
                     <header className="workspace-header">
                         <div>
                             <h2>Comprehensive Analysis</h2>
-                            <p>Review the AI-generated narrative based on the student profile.</p>
+                            <p>Review the generated narrative based on the student profile.</p>
                         </div>
                         <div className="workspace-actions">
                             <button className="ghost-button" onClick={() => generateAnalysis(projectData)} disabled={loading}>
@@ -144,9 +144,6 @@ const Planning = () => {
                             </button>
                             <button className="primary-button" onClick={handleSave} disabled={!analysis}>
                                 Save Analysis
-                            </button>
-                            <button className="primary-button" onClick={handleCopy} disabled={!analysis}>
-                                Copy to Clipboard
                             </button>
                         </div>
                     </header>

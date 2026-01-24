@@ -18,7 +18,13 @@ api.interceptors.request.use((config) => {
 
     // Get token from Redux state if store is available
     if (store) {
-        const token = store.getState().auth.token;
+        const state = store.getState();
+        const token = state.auth.token;
+        console.log('[API Interceptor] Auth State:', {
+            isAuthenticated: state.auth.isAuthenticated,
+            hasToken: !!token
+        });
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
