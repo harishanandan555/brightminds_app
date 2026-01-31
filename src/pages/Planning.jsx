@@ -28,31 +28,122 @@ const Planning = () => {
         // Only run if we have enough data
         if (!data || !data.studentName) return;
 
+        console.log('=== PLANNING: Received Data for Analysis ===');
+        console.log(JSON.stringify(data, null, 2));
+
         setLoading(true);
         setError(null);
 
         try {
-            // Construct payload strictly for analysis endpoint
-            const aiPayload = {
-                studentName: data.studentName?.trim() || "",
-                studentAge: Number(data.studentAge) || 0,
-                gradeLevel: data.gradeLevel?.trim() || "",
-                presentLevels: data.presentLevels?.trim() || "",
-                currentPerformance: data.currentPerformance?.trim() || "",
-                goals: data.goals?.trim() || "",
-                accommodations: data.accommodations?.trim() || "",
-                relatedServices: data.relatedServices || [],
-                projectId: data.projectId || "" // Add projectId to payload
+            // Helper to safely convert value to string (handles arrays, objects, strings)
+            const toSafeString = (val) => {
+                if (val === null || val === undefined) return "";
+                if (typeof val === "string") return val.trim();
+                if (Array.isArray(val)) return val.join(", ");
+                if (typeof val === "object") return JSON.stringify(val);
+                return String(val);
             };
 
+            // Construct payload strictly for analysis endpoint
+            // NOTE: Do NOT send projectId - the remote server tries to look it up and fails
+            const aiPayload = {
+                studentName: toSafeString(data.studentName),
+                studentAge: Number(data.studentAge) || 0,
+                gradeLevel: toSafeString(data.gradeLevel),
+                presentLevels: toSafeString(data.presentLevels),
+                currentPerformance: toSafeString(data.currentPerformance),
+                goals: toSafeString(data.goals),
+                accommodations: toSafeString(data.accommodations),
+                relatedServices: Array.isArray(data.relatedServices) ? data.relatedServices : []
+            };
+
+            console.log('=== PLANNING: Sending to Analysis API ===');
+            console.log(JSON.stringify(aiPayload, null, 2));
+
             const result = await dispatch(analyzeProject(aiPayload));
+
+            console.log('=== PLANNING: Analysis API Response ===');
+            console.log('Fulfilled:', analyzeProject.fulfilled.match(result));
+            console.log('Full Result:', JSON.stringify(result, null, 2));
+
             if (analyzeProject.fulfilled.match(result)) {
-                console.log('[Planning] Analysis Result:', result.payload.analysis);
-                setAnalysis(result.payload.analysis);
+                const analysisData = result.payload.analysis;
+                console.log('=== PLANNING: Analysis Data ===');
+                console.log(analysisData);
+
+                // Format the analysis object into readable text
+                let formattedAnalysis = "";
+                if (typeof analysisData === "string") {
+                    formattedAnalysis = analysisData;
+                } else if (typeof analysisData === "object" && analysisData !== null) {
+                    // Convert structured object to readable format
+                    formattedAnalysis = `### Student Analysis Summary\n\n`;
+                    formattedAnalysis += `**Summary:** ${analysisData.summary || 'N/A'}\n\n`;
+
+                    if (analysisData.instructionalFocus?.length > 0) {
+                        formattedAnalysis += `**Instructional Focus:**\n`;
+                        analysisData.instructionalFocus.forEach(item => {
+                            formattedAnalysis += `- ${item.area}: ${item.details}\n`;
+                        });
+                        formattedAnalysis += `\n`;
+                    }
+
+                    if (analysisData.strategies) {
+                        formattedAnalysis += `**Strategies:**\n`;
+                        if (analysisData.strategies.academic?.length > 0) {
+                            formattedAnalysis += `- Academic: ${analysisData.strategies.academic.join('; ')}\n`;
+                        }
+                        if (analysisData.strategies.cognitive?.length > 0) {
+                            formattedAnalysis += `- Cognitive: ${analysisData.strategies.cognitive.join('; ')}\n`;
+                        }
+                        if (analysisData.strategies.behavioral?.length > 0) {
+                            formattedAnalysis += `- Behavioral: ${analysisData.strategies.behavioral.join('; ')}\n`;
+                        }
+                        formattedAnalysis += `\n`;
+                    }
+
+                    if (analysisData.shortTermGoals?.length > 0) {
+                        formattedAnalysis += `**Short-Term Goals:**\n`;
+                        analysisData.shortTermGoals.forEach(goal => {
+                            formattedAnalysis += `- ${goal}\n`;
+                        });
+                        formattedAnalysis += `\n`;
+                    }
+
+                    if (analysisData.longTermGoals?.length > 0) {
+                        formattedAnalysis += `**Long-Term Goals:**\n`;
+                        analysisData.longTermGoals.forEach(goal => {
+                            formattedAnalysis += `- ${goal}\n`;
+                        });
+                        formattedAnalysis += `\n`;
+                    }
+
+                    if (analysisData.accommodations?.length > 0) {
+                        formattedAnalysis += `**Accommodations:** ${analysisData.accommodations.join(', ')}\n\n`;
+                    }
+
+                    if (analysisData.services?.length > 0) {
+                        formattedAnalysis += `**Services:** ${analysisData.services.join(', ')}\n\n`;
+                    }
+
+                    if (analysisData.progressMonitoring) {
+                        formattedAnalysis += `**Progress Monitoring:** ${analysisData.progressMonitoring}\n\n`;
+                    }
+
+                    if (analysisData.familyCollaboration) {
+                        formattedAnalysis += `**Family Collaboration:** ${analysisData.familyCollaboration}\n`;
+                    }
+                }
+
+                setAnalysis(formattedAnalysis);
             } else {
+                console.error('=== PLANNING: Analysis Failed ===');
+                console.error(result);
                 setError("Failed to generate analysis. Please try again.");
             }
         } catch (err) {
+            console.error('=== PLANNING: Unexpected Error ===');
+            console.error(err);
             setError("An unexpected error occurred.");
         } finally {
             setLoading(false);
@@ -162,7 +253,6 @@ const Planning = () => {
                             </div>
                         ) : (
                             <div className="analysis-result">
-                                {console.log('[Planning] Rendering analysis State:', analysis ? analysis.substring(0, 20) + '...' : 'EMPTY')}
                                 <textarea
                                     className="analysis-textarea"
                                     value={analysis}
@@ -178,10 +268,6 @@ const Planning = () => {
                                         backgroundColor: '#fff' // Force visible background
                                     }}
                                 />
-                                {analysis && <div style={{ marginTop: '1rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
-                                    <h4>Debug View:</h4>
-                                    <pre style={{ whiteSpace: 'pre-wrap' }}>{analysis}</pre>
-                                </div>}
 
                                 {/* Hidden Project Details Section as requested */}
                                 {projectData && (

@@ -311,6 +311,11 @@ function Dashboard() {
   };
 
   const handleViewPlan = (project) => {
+    console.log('=== VIEW PLAN: Selected Project ===');
+    console.log('Project ID:', project.id || project._id);
+    console.log('Student Name:', project.studentName);
+    console.log('Full Project Data:', JSON.stringify(project, null, 2));
+
     // Prepare state for planning view
     const stateForPlanning = {
       ...project,
@@ -319,6 +324,9 @@ function Dashboard() {
       // Ensure analysis is passed if present
       analysis: project.analysis || ""
     };
+
+    console.log('=== VIEW PLAN: Data being sent to Planning page ===');
+    console.log(JSON.stringify(stateForPlanning, null, 2));
 
     if (window.appNavigate) {
       window.appNavigate("/planning", { usr: stateForPlanning });
