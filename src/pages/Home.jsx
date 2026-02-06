@@ -21,7 +21,7 @@ const featureCards = [
     icon: "🛡️",
     title: "Compliance Guardrails",
     description:
-      "Never miss a deadline or required component. BrightMinds monitors timelines, documentation, and meeting notes with FERPA-ready security.",
+      "Never miss a deadline or required component. upableED monitors timelines, documentation, and meeting notes with FERPA-ready security.",
   },
 ];
 
@@ -91,7 +91,7 @@ const resourceCards = [
   {
     title: "Progress Monitoring Masterclass",
     description:
-      "Join specialists and district leaders for live training on building evidence-backed narratives with BrightMinds.",
+      "Join specialists and district leaders for live training on building evidence-backed narratives with upableED.",
     cta: "Save my seat",
     href: "#",
     ariaLabel: "Register for Progress Monitoring Masterclass",
@@ -101,7 +101,7 @@ const resourceCards = [
 const testimonials = [
   {
     quote:
-      "Drafting compliant goals used to take my team hours. With BrightMinds, we co-write plans in one session and parents feel included.",
+      "Drafting compliant goals used to take my team hours. With upableED, we co-write plans in one session and parents feel included.",
     name: "– Jessica N., Director of Special Education",
   },
   {
@@ -142,8 +142,8 @@ function Home() {
       <header>
         <div className="container nav">
           <a className="brand" href="#top">
-            <span className="brand-pill">BM</span>
-            BrightMinds
+            <span className="brand-pill">uE</span>
+            upableED
           </a>
           <nav className="nav-links" aria-label="Primary navigation">
             <ul>
@@ -179,7 +179,7 @@ function Home() {
               <span className="eyebrow">Insight-driven IEP success</span>
               <h1 id="hero-title">Guide every learner&apos;s IEP with intelligent collaboration.</h1>
               <p className="lead">
-                BrightMinds is the SaaS co-pilot that unites teachers and families to co-author
+                upableED is the SaaS co-pilot that unites teachers and families to co-author
                 compliant, student-centered IEPs—powered by trustworthy insights and real-time data.
               </p>
               <div className="highlight-card" role="presentation">
@@ -212,7 +212,7 @@ function Home() {
             <span className="pill">Platform Features</span>
             <h2 id="product-title">One workspace for equitable, data-rich IEPs</h2>
             <p>
-              Every BrightMinds module is designed with special educators, therapists, and parents to
+              Every upableED module is designed with special educators, therapists, and parents to
               accelerate impact without sacrificing compliance.
             </p>
           </div>
@@ -234,7 +234,7 @@ function Home() {
         <section className="container" aria-labelledby="journey-title">
           <div className="learning-path">
             <div className="section-title section-title-compact">
-              <h2 id="journey-title">The BrightMinds workflow</h2>
+              <h2 id="journey-title">The upableED workflow</h2>
               <p>
                 Launch the platform in days, unlock smart drafting, and keep teams focused on
                 student outcomes instead of paperwork.
@@ -259,7 +259,7 @@ function Home() {
             <span className="pill">Purpose-built experiences</span>
             <h2 id="solutions-title">Tools for every member of the IEP team</h2>
             <p>
-              From directors to classroom teachers to families, BrightMinds keeps everyone informed,
+              From directors to classroom teachers to families, upableED keeps everyone informed,
               accountable, and confident.
             </p>
           </div>
@@ -312,7 +312,7 @@ function Home() {
         <section className="container" aria-labelledby="voices-title">
           <div className="section-title">
             <span className="pill">Voices of Impact</span>
-            <h2 id="voices-title">Teams share their BrightMinds wins</h2>
+            <h2 id="voices-title">Teams share their upableED wins</h2>
           </div>
           <div className="testimonials">
             <div className="testimonial-grid" role="list">
@@ -329,7 +329,7 @@ function Home() {
         <section className="container" id="contact" aria-labelledby="contact-title">
           <div className="enrollment">
             <div className="enrollment-details">
-              <h2 id="contact-title">Ready to explore BrightMinds?</h2>
+              <h2 id="contact-title">Ready to explore upableED?</h2>
               <p>
                 Share your details and our team will craft a personalized walkthrough, readiness
                 roadmap, and ROI model tailored to your learners.
@@ -340,7 +340,7 @@ function Home() {
                 <li>Hands-on product sandbox</li>
               </ul>
             </div>
-            <form aria-label="Contact BrightMinds form">
+            <form aria-label="Contact upableED form">
               <div>
                 <label htmlFor="full-name">Full Name</label>
                 <input
@@ -376,7 +376,7 @@ function Home() {
                 </select>
               </div>
               <div>
-                <label htmlFor="primary-goal">Primary Goal with BrightMinds</label>
+                <label htmlFor="primary-goal">Primary Goal with upableED</label>
                 <select id="primary-goal" name="primary-goal" defaultValue="">
                   {primaryGoals.map((option) => (
                     <option value={option.value} key={option.label}>
@@ -404,7 +404,7 @@ function Home() {
       <footer className="container" role="contentinfo">
         <div className="footer-grid">
           <div className="footer-column">
-            <h4>BrightMinds</h4>
+            <h4>upableED</h4>
             <p>
               128 Harmony Way, Suite 500
               <br />
@@ -413,7 +413,7 @@ function Home() {
             <p>
               Tel: (415) 555-0194
               <br />
-              Email: hello@brightmindsiep.com
+              Email: hello@upableed.com
             </p>
           </div>
           <div className="footer-column">
@@ -439,7 +439,7 @@ function Home() {
           </div>
         </div>
         <div className="footer-note">
-          © {currentYear} BrightMinds · Smart co-pilot for special education teams.
+          © {currentYear} upableED · Smart co-pilot for special education teams.
         </div>
       </footer>
     </div>

@@ -29,3 +29,32 @@ export const analyzeProject = async (projectData) => {
     const response = await api.post('/projects/analysis', projectData);
     return response.data;
 };
+
+// Progress Item APIs
+export const addProgressItem = async (projectId, data) => {
+    const response = await api.post(`/projects/${projectId}/progress-item`, data);
+    return response.data;
+};
+
+export const updateProgressItem = async (projectId, itemId, data) => {
+    const response = await api.put(`/projects/${projectId}/progress-item/${itemId}`, data);
+    return response.data;
+};
+
+export const deleteProgressItem = async (projectId, itemId) => {
+    const response = await api.delete(`/projects/${projectId}/progress-item/${itemId}`);
+    return response.data;
+};
+
+// IEP Document Extraction
+export const extractIep = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post('/projects/extract-iep', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
+};

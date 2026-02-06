@@ -97,7 +97,7 @@ function ParentDashboard() {
 
   useEffect(() => {
     // Optional: Check role logic if strict redirect needed, but usually redundant with protected routes
-    // const role = sessionStorage.getItem("brightMindsRole");
+    // const role = sessionStorage.getItem("upableEDRole");
     // if (role !== "parent") { ... }
   }, []);
 
@@ -222,8 +222,8 @@ function ParentDashboard() {
     <div className="parent-page">
       <header className="parent-header">
         <a href="/" className="parent-brand" data-route>
-          <span aria-hidden="true">BM</span>
-          BrightMinds
+          <span aria-hidden="true">uE</span>
+          upableED
         </a>
         <nav aria-label="Parent navigation">
           <a href="/" className="parent-link" data-route>
@@ -239,7 +239,7 @@ function ParentDashboard() {
         <section className="parent-hero">
           <h1>My Child</h1>
           <p>
-            Share how your child is doing, what goals matter most, and which supports make a difference. BrightMinds keeps
+            Share how your child is doing, what goals matter most, and which supports make a difference. upableED keeps
             everyone aligned between meetings.
           </p>
           <div className="parent-actions">

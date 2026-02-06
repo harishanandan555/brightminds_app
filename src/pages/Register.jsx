@@ -51,7 +51,7 @@ function Register() {
                 <aside className="login-aside" aria-hidden="true">
                     <div className="login-gradient" />
                     <div className="login-hero-copy">
-                        <span className="login-pill">BrightMinds</span>
+                        <span className="login-pill">upableED</span>
                         <h1>Join the community building smarter IEP journeys.</h1>
                         <p>
                             Collaborate effectively with purpose-built tools for special education.
@@ -62,8 +62,8 @@ function Register() {
                 <main className="login-panel">
                     <header className="login-header">
                         <a href="/" className="login-brand" data-route>
-                            <span aria-hidden="true">BM</span>
-                            BrightMinds
+                            <span aria-hidden="true">uE</span>
+                            upableED
                         </a>
                         <a href="/login" className="login-link" data-route>
                             ← Back to sign in
@@ -73,7 +73,7 @@ function Register() {
                     <section className="login-card" aria-live="polite">
                         <div className="login-copy">
                             <h2 id="register-heading">Create Account</h2>
-                            <p>Get started with BrightMinds today.</p>
+                            <p>Get started with upableED today.</p>
                         </div>
 
                         <form className="login-form" onSubmit={handleSubmit}>

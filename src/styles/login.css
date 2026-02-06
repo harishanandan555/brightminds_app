@@ -205,12 +205,12 @@
 .login-form input[type="text"],
 .login-form select {
   width: 100%;
-  border: 1px solid rgba(155, 166, 204, 0.6);
-  border-radius: 14px;
+  border: 2px solid #d0d7de;
+  border-radius: 8px;
   padding: 0.9rem 1.05rem;
   font-size: 0.95rem;
   color: var(--login-heading);
-  background: #f8f9ff;
+  background: #ffffff;
   transition: border 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -221,6 +221,7 @@
   background-repeat: no-repeat;
   background-position: right 1rem top 50%;
   background-size: 0.65em auto;
+  background-color: #ffffff;
 }
 
 .login-form input[type="email"]:focus-visible,
@@ -228,9 +229,9 @@
 .login-form input[type="text"]:focus-visible,
 .login-form select:focus-visible {
   outline: none;
-  border: 1px solid var(--login-accent);
+  border: 2px solid var(--login-accent);
   box-shadow: 0 0 0 4px rgba(66, 83, 255, 0.18);
-  background: #fff;
+  background: #ffffff;
 }
 
 .login-actions {
