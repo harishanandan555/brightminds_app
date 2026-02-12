@@ -1,9 +1,14 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProjects, createProject, updateProject, deleteProject, analyzeProject } from '../store/slices/projectSlice';
 import { logout } from '../store/slices/authSlice';
 import { persistor } from '../store/store';
 import { addProgressItem, updateProgressItem, deleteProgressItem, extractIep } from '../api/projectsApi';
+import { submitFeedback } from '../api/feedbackApi';
+import { listUsers, listAllFeedback } from '../api/adminApi';
+import AdminUsersList from '../components/AdminUsersList';
+import AdminFeedbackList from '../components/AdminFeedbackList';
 import "../styles/dashboard.css";
 
 const INITIAL_FORM = {
@@ -19,6 +24,7 @@ const INITIAL_FORM = {
   parentSurvey: "",
   notes: "",
   relatedServices: [],
+  otherRelatedService: "",
   analysis: "",
 };
 
@@ -30,6 +36,7 @@ const RELATED_SERVICE_OPTIONS = [
   "Counseling services",
   "Assistive technology",
   "Transportation support",
+  "Others",
 ];
 
 const GRADE_LEVELS = [
@@ -102,8 +109,8 @@ const generateAnalysis = (project) => {
       : "Accommodations not yet outlined.",
     `Related services in plan: ${services}.`,
     project.parentSurvey
-      ? `Parent survey insights: ${project.parentSurvey}.`
-      : "Parent survey feedback pending.",
+      ? `Parents Inputs: ${project.parentSurvey}.`
+      : "Parents Inputs pending.",
   ].join(" ");
 };
 
@@ -114,7 +121,7 @@ const emptyDocuments = [];
 function Dashboard() {
   const dispatch = useDispatch();
   const { items: projects, loading, error } = useSelector((state) => state.projects || { items: [] });
-  const { user } = useSelector((state) => state.auth || {});
+  const { user, role } = useSelector((state) => state.auth || {});
   const [activeTab, setActiveTab] = useState(null);
   const [formState, setFormState] = useState(INITIAL_FORM);
   const [documents, setDocuments] = useState(emptyDocuments);
@@ -127,6 +134,38 @@ function Dashboard() {
   const [iepError, setIepError] = useState(null);
   const [iepSuccess, setIepSuccess] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackData, setFeedbackData] = useState({
+    type: 'general',
+    rating: 0,
+    message: '',
+    email: '',
+    allowContact: false
+  });
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [showMandatoryFeedback, setShowMandatoryFeedback] = useState(false);
+
+  const isSuperadmin = (role || user?.role) === 'superadmin';
+
+  useEffect(() => {
+    // Check if user has at least 2 projects and hasn't submitted feedback yet
+    if (projects.length >= 2) {
+      const hasSubmitted = localStorage.getItem('hasSubmittedMandatoryFeedback');
+      if (!hasSubmitted) {
+        setShowMandatoryFeedback(true);
+        setShowFeedbackModal(true);
+      }
+    }
+  }, [projects]);
+
+  useEffect(() => {
+    console.log('[Dashboard] Debug Role Check:', {
+      roleFromState: role,
+      userRole: user?.role,
+      computedIsSuperadmin: isSuperadmin,
+      userObject: user
+    });
+  }, [role, user, isSuperadmin]);
 
   const isEditing = Boolean(editingId);
 
@@ -138,12 +177,6 @@ function Dashboard() {
   useEffect(() => {
     // Rely on redux role if persisted, or check session logic if legacy
     // The authSlice is persisted, so we can check selector or assume login handled redirect.
-    // However, if manual navigation happens:
-    // const role = sessionStorage.getItem("upableEDRole");
-    // if (role !== "teacher") {
-    //   window.location.replace("/login?role=teacher");
-    // }
-    // Since we removed manual session storage setter in authSlice, we should rely on state.
     // For now, let's trust the user is here after login.
   }, []);
 
@@ -218,10 +251,10 @@ function Dashboard() {
         const formatPresentLevels = (levels) => {
           if (!levels || typeof levels === 'string') return levels || '';
           const parts = [];
-          if (levels.academic) parts.push(`Academic: ${levels.academic}`);
-          if (levels.functional) parts.push(`Functional: ${levels.functional}`);
-          if (levels.behavioral) parts.push(`Behavioral: ${levels.behavioral}`);
-          if (levels.socialEmotional) parts.push(`Social-Emotional: ${levels.socialEmotional}`);
+          if (levels.academic) parts.push(`Academic: ${levels.academic} `);
+          if (levels.functional) parts.push(`Functional: ${levels.functional} `);
+          if (levels.behavioral) parts.push(`Behavioral: ${levels.behavioral} `);
+          if (levels.socialEmotional) parts.push(`Social - Emotional: ${levels.socialEmotional} `);
           return parts.join('\n') || '';
         };
 
@@ -234,8 +267,8 @@ function Dashboard() {
               const parts = [];
               if (g.area) parts.push(`[${g.area}]`);
               if (g.description) parts.push(g.description);
-              if (g.target) parts.push(`Target: ${g.target}`);
-              return parts.join(' ') || `Goal ${i + 1}`;
+              if (g.target) parts.push(`Target: ${g.target} `);
+              return parts.join(' ') || `Goal ${i + 1} `;
             }).join('\n');
           }
           return '';
@@ -286,7 +319,7 @@ function Dashboard() {
           lastModified: file.lastModified,
         }]);
 
-        setIepSuccess(`Successfully extracted IEP for ${data.studentName || data.projectName || 'project'}. Review and edit the fields below.`);
+        setIepSuccess(`Successfully extracted IEP for ${data.studentName || data.projectName || 'project'}.Review and edit the fields below.`);
 
         // Switch to manual mode to show the form with pre-filled data
         setProjectCreationType('manual');
@@ -302,6 +335,14 @@ function Dashboard() {
   };
 
   const hydrateProjectPayload = (payload) => {
+    let services = [...payload.relatedServices];
+    if (services.includes("Others")) {
+      services = services.filter(s => s !== "Others");
+      if (payload.otherRelatedService?.trim()) {
+        services.push(payload.otherRelatedService.trim());
+      }
+    }
+
     const trimmed = {
       ...payload,
       projectName: payload.projectName?.trim() || "",
@@ -314,6 +355,7 @@ function Dashboard() {
       accommodations: payload.accommodations?.trim() || "",
       parentSurvey: payload.parentSurvey?.trim() || "",
       notes: payload.notes?.trim() || "",
+      relatedServices: services,
     };
 
     // Use existing analysis from form (AI generated or edited) or fallback to client-side generation
@@ -390,6 +432,11 @@ function Dashboard() {
       errors.goals = 'Student goals are required';
     } else if (formState.goals.trim().length < 10) {
       errors.goals = 'Please provide more detail (at least 10 characters)';
+    }
+
+    // Services validation
+    if (formState.relatedServices.includes("Others") && !formState.otherRelatedService?.trim()) {
+      errors.otherRelatedService = 'Please specify the other service';
     }
 
     setValidationErrors(errors);
@@ -506,8 +553,21 @@ function Dashboard() {
       relatedServices: project.relatedServices || [],
       analysis: project.analysis || "", // Load existing analysis
     });
+
+    // Handle loading custom services into "Others"
+    const standardServices = RELATED_SERVICE_OPTIONS.filter(s => s !== "Others");
+    const projectServices = project.relatedServices || [];
+    const customServices = projectServices.filter(s => !standardServices.includes(s));
+    const hasCustom = customServices.length > 0;
+
+    setFormState(prev => ({
+      ...prev,
+      relatedServices: projectServices.filter(s => standardServices.includes(s)).concat(hasCustom ? ["Others"] : []),
+      otherRelatedService: hasCustom ? customServices.join(", ") : ""
+    }));
+
     setDocuments(project.documents ?? emptyDocuments);
-    setEditingId(project.id);
+    setEditingId(project.id || project._id);
     setActiveTab("new");
     setProjectCreationType('manual'); // Set to manual mode when editing
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -573,6 +633,45 @@ function Dashboard() {
           <a href="/" className="dashboard-link" data-route>
             Product site
           </a>
+          <button
+            onClick={() => setShowFeedbackModal(true)}
+            className="dashboard-link"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+          >
+            💬 Feedback
+          </button>
+          {isSuperadmin && (
+            <>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`dashboard-link ${activeTab === 'users' ? 'active' : ''}`}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontWeight: activeTab === 'users' ? 'bold' : 'normal',
+                  color: activeTab === 'users' ? 'var(--primary-color)' : 'inherit'
+                }}
+              >
+                👥 Users
+              </button>
+              <button
+                onClick={() => setActiveTab('feedback')}
+                className={`dashboard-link ${activeTab === 'feedback' ? 'active' : ''}`}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontWeight: activeTab === 'feedback' ? 'bold' : 'normal',
+                  color: activeTab === 'feedback' ? 'var(--primary-color)' : 'inherit'
+                }}
+              >
+                📋 All Feedback
+              </button>
+            </>
+          )}
           <span className="user-info">
             {user?.name || user?.email || 'User'}
           </span>
@@ -614,6 +713,17 @@ function Dashboard() {
             </div>
           </div>
         </section>
+        {activeTab === 'users' && isSuperadmin && (
+          <div style={{ padding: '0 2rem' }}>
+            <AdminUsersList />
+          </div>
+        )}
+
+        {activeTab === 'feedback' && isSuperadmin && (
+          <div style={{ padding: '0 2rem' }}>
+            <AdminFeedbackList />
+          </div>
+        )}
 
         {activeTab === null && (
           <section className="workspace-placeholder" aria-label="Select a workspace">
@@ -631,15 +741,7 @@ function Dashboard() {
                 <h2>{isEditing ? "Update project" : "Start a new student project"}</h2>
               </div>
               <div className="workspace-actions">
-                {isEditing && (
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={handleGenerateAnalysis}
-                  >
-                    ✨ Open Smart Planning
-                  </button>
-                )}
+
                 <button type="button" className="ghost-button" onClick={resetForm}>
                   Clear form
                 </button>
@@ -858,6 +960,22 @@ function Dashboard() {
                         </label>
                       ))}
                     </div>
+                    {(formState.relatedServices || []).includes("Others") && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <input
+                          type="text"
+                          name="otherRelatedService"
+                          value={formState.otherRelatedService || ""}
+                          onChange={handleInputChange}
+                          placeholder="Please specify other service..."
+                          className={validationErrors.otherRelatedService ? 'input-error' : ''}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-default)' }}
+                        />
+                        {validationErrors.otherRelatedService && (
+                          <span className="field-error">{validationErrors.otherRelatedService}</span>
+                        )}
+                      </div>
+                    )}
                     <label>
                       Additional notes
                       <textarea
@@ -873,7 +991,7 @@ function Dashboard() {
                   <fieldset>
                     <legend>Family collaboration</legend>
                     <label>
-                      Parent survey insights
+                      Parents Inputs
                       <textarea
                         name="parentSurvey"
                         value={formState.parentSurvey || ""}
@@ -966,7 +1084,7 @@ function Dashboard() {
                     </thead>
                     <tbody>
                       {projects.map((project, index) => {
-                        const projectKey = project.id || project._id || `project-${index}`;
+                        const projectKey = project.id || project._id || `project - ${index} `;
                         return (
                           <React.Fragment key={projectKey}>
                             <tr
@@ -978,7 +1096,7 @@ function Dashboard() {
                               <td>{project.studentAge || "—"}</td>
                               <td>
                                 <div className="progress-cell">
-                                  <span className={`progress-badge progress-${(project.progress || 'pending').replace('_', '-')}`}>
+                                  <span className={`progress - badge progress - ${(project.progress || 'pending').replace('_', '-')} `}>
                                     {project.progress === 'completed' && '✓ '}
                                     {(project.progress || 'pending').replace('_', ' ')}
                                   </span>
@@ -1024,14 +1142,14 @@ function Dashboard() {
                                             }}
                                           />
                                           <div className="progress-item-content">
-                                            <p className={`progress-item-title ${item.status === 'completed' ? 'completed' : ''}`}>
+                                            <p className={`progress - item - title ${item.status === 'completed' ? 'completed' : ''} `}>
                                               {item.title}
                                             </p>
                                             <span className="progress-item-meta">
                                               {new Date(item.updatedAt).toLocaleDateString()}
                                             </span>
                                           </div>
-                                          <span className={`progress-item-status status-${item.status.replace('_', '-')}`}>
+                                          <span className={`progress - item - status status - ${item.status.replace('_', '-')} `}>
                                             {item.status.replace('_', ' ')}
                                           </span>
                                           <div className="progress-item-actions">
@@ -1106,6 +1224,196 @@ function Dashboard() {
           </section>
         )}
       </main>
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="modal-overlay" onClick={() => setShowFeedbackModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{showMandatoryFeedback ? "We'd love your feedback!" : "Send Feedback"}</h2>
+              <button
+                className="close-button"
+                onClick={() => setShowFeedbackModal(false)}
+              >
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              {showMandatoryFeedback && (
+                <p style={{ marginBottom: '1rem', color: '#64748b' }}>
+                  Congratulations on creating your second project! To help us improve upableED, please take a moment to share your thoughts.
+                </p>
+              )}
+
+              {/* Feedback Type */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
+                  Feedback Type
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {['general', 'bug', 'feature'].map(type => (
+                    <button
+                      key={type}
+                      className={`type-button ${feedbackData.type === type ? 'active' : ''}`}
+                      onClick={() => setFeedbackData(prev => ({ ...prev, type }))}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        border: `1px solid ${feedbackData.type === type ? 'var(--primary-color)' : 'var(--border-default)'}`,
+                        background: feedbackData.type === type ? 'var(--primary-light)' : 'white',
+                        color: feedbackData.type === type ? 'var(--primary-color)' : 'inherit',
+                        cursor: 'pointer',
+                        textTransform: 'capitalize'
+                      }}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rating */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
+                  How would you rate your experience?
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      onClick={() => setFeedbackData(prev => ({ ...prev, rating: star }))}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '1.5rem',
+                        cursor: 'pointer',
+                        color: star <= feedbackData.rating ? '#fbbf24' : '#e2e8f0',
+                        transition: 'color 0.2s'
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Message */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
+                  Your Message
+                </label>
+                <textarea
+                  value={feedbackData.message}
+                  onChange={(e) => setFeedbackData(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="Tell us what you like or what we can improve..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '6px',
+                    border: '2px solid var(--border-default)',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Email */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
+                  Email (optional)
+                </label>
+                <input
+                  type="email"
+                  value={feedbackData.email}
+                  onChange={(e) => setFeedbackData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="your.email@example.com"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '6px',
+                    border: '2px solid var(--border-default)',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              {/* Allow Contact */}
+              <div style={{ marginBottom: '0.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={feedbackData.allowContact}
+                    onChange={(e) => setFeedbackData(prev => ({ ...prev, allowContact: e.target.checked }))}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>You may contact me about this feedback</span>
+                </label>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="ghost-button"
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setFeedbackData({
+                    type: 'general',
+                    rating: 0,
+                    message: '',
+                    email: '',
+                    allowContact: false
+                  });
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                onClick={async () => {
+                  if (!feedbackData.message.trim()) {
+                    alert('Please enter your feedback');
+                    return;
+                  }
+                  setFeedbackSubmitting(true);
+                  try {
+                    await submitFeedback({
+                      type: feedbackData.type,
+                      rating: feedbackData.rating,
+                      message: feedbackData.message,
+                      email: feedbackData.email || user?.email || null,
+                      allowContact: feedbackData.allowContact
+                    });
+
+                    if (showMandatoryFeedback) {
+                      localStorage.setItem('hasSubmittedMandatoryFeedback', 'true');
+                      setShowMandatoryFeedback(false);
+                    }
+
+                    alert('Thank you for your feedback!');
+                    setShowFeedbackModal(false);
+                    setFeedbackData({
+                      type: 'general',
+                      rating: 0,
+                      message: '',
+                      email: '',
+                      allowContact: false
+                    });
+                  } catch (err) {
+                    alert('Failed to submit feedback. Please try again.');
+                  } finally {
+                    setFeedbackSubmitting(false);
+                  }
+                }}
+                disabled={feedbackSubmitting}
+              >
+                {feedbackSubmitting ? 'Submitting...' : 'Submit Feedback'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

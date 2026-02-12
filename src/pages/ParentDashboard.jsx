@@ -88,6 +88,9 @@ function ParentDashboard() {
   const [formState, setFormState] = useState(INITIAL_FORM);
   const [documents, setDocuments] = useState(emptyDocuments);
   const [editingId, setEditingId] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
 
   const isEditing = Boolean(editingId);
 
@@ -229,6 +232,13 @@ function ParentDashboard() {
           <a href="/" className="parent-link" data-route>
             Product site
           </a>
+          <button
+            onClick={() => setShowFeedbackModal(true)}
+            className="parent-link"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textDecoration: 'underline' }}
+          >
+            💬 Feedback
+          </button>
           <button onClick={handleLogout} className="parent-link" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textDecoration: 'underline' }}>
             Logout
           </button>
@@ -481,6 +491,76 @@ function ParentDashboard() {
           )}
         </section>
       </main>
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="modal-overlay" onClick={() => setShowFeedbackModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Send Feedback</h2>
+              <button className="modal-close" onClick={() => setShowFeedbackModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                We'd love to hear your thoughts, suggestions, or report any issues you've encountered.
+              </p>
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="Share your feedback here..."
+                rows={6}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  border: '2px solid var(--border-default)',
+                  fontSize: '0.875rem',
+                  fontFamily: 'inherit',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+            <div className="modal-footer">
+              <button
+                className="ghost-button"
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setFeedbackText('');
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                onClick={async () => {
+                  if (!feedbackText.trim()) {
+                    alert('Please enter your feedback');
+                    return;
+                  }
+                  setFeedbackSubmitting(true);
+                  try {
+                    console.log('Feedback submitted:', {
+                      user: 'Parent User',
+                      timestamp: new Date().toISOString(),
+                      feedback: feedbackText
+                    });
+                    alert('Thank you for your feedback!');
+                    setShowFeedbackModal(false);
+                    setFeedbackText('');
+                  } catch (err) {
+                    alert('Failed to submit feedback. Please try again.');
+                  } finally {
+                    setFeedbackSubmitting(false);
+                  }
+                }}
+                disabled={feedbackSubmitting}
+              >
+                {feedbackSubmitting ? 'Submitting...' : 'Submit Feedback'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

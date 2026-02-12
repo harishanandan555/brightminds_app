@@ -19,7 +19,7 @@ function Register() {
 
     useEffect(() => {
         if (isAuthenticated && role) {
-            if (role === 'teacher') {
+            if (role === 'teacher' || role === 'superadmin') {
                 window.appNavigate?.("/dashboard");
             } else {
                 window.appNavigate?.("/parent");

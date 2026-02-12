@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser } from '../store/slices/authSlice';
+import { loginUser, logout } from '../store/slices/authSlice';
+import { fetchBetaStatus } from '../store/slices/betaSlice';
 import "../styles/login.css";
 
 function Login() {
@@ -8,14 +9,52 @@ function Login() {
   const { loading, error, isAuthenticated, role } = useSelector((state) => state.auth);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [betaChecking, setBetaChecking] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && role) {
-      if (role === 'teacher') {
-        window.appNavigate?.("/dashboard");
-      } else {
-        window.appNavigate?.("/parent");
-      }
+      // After login, check beta status before redirecting
+      setBetaChecking(true);
+      dispatch(fetchBetaStatus())
+        .unwrap()
+        .then((betaData) => {
+          console.log('[Login] Beta data received:', betaData);
+          console.log('[Login] hasAccepted:', betaData?.hasAccepted);
+          console.log('[Login] hasDeclined:', betaData?.hasDeclined);
+          console.log('[Login] hasSeenConfirmation:', betaData?.hasSeenConfirmation);
+          
+          // If user has accepted and seen confirmation → go to dashboard
+          if (betaData?.hasAccepted && betaData?.hasSeenConfirmation) {
+            console.log('[Login] User completed beta flow, going to dashboard');
+            if (role === 'teacher' || role === 'superadmin') {
+              window.appNavigate?.("/dashboard");
+            } else {
+              window.appNavigate?.("/parent");
+            }
+            return;
+          }
+          
+          // If user has accepted but hasn't seen confirmation → show confirmation page
+          if (betaData?.hasAccepted && !betaData?.hasSeenConfirmation) {
+            console.log('[Login] User accepted but needs to see confirmation');
+            window.appNavigate?.("/beta-confirmation");
+            return;
+          }
+          
+          // If user has NOT accepted (whether declined before or never responded) → show agreement page
+          // This gives users another chance to accept even if they previously declined
+          console.log('[Login] User has not accepted, showing agreement page');
+          window.appNavigate?.("/beta-agreement");
+        })
+        .catch(() => {
+          // If beta status check fails, still allow through to dashboard
+          if (role === 'teacher' || role === 'superadmin') {
+            window.appNavigate?.("/dashboard");
+          } else {
+            window.appNavigate?.("/parent");
+          }
+        })
+        .finally(() => setBetaChecking(false));
     }
   }, [isAuthenticated, role]);
 
@@ -62,7 +101,20 @@ function Login() {
             </div>
 
             <form className="login-form" onSubmit={handleSubmit}>
-              {error && <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+              {error && (
+                <div className="error-message" style={{ 
+                  color: '#d64545', 
+                  marginBottom: '1rem', 
+                  padding: '0.75rem 1rem',
+                  backgroundColor: 'rgba(214, 69, 69, 0.08)',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(214, 69, 69, 0.2)',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.5'
+                }}>
+                  {error}
+                </div>
+              )}
 
               <label htmlFor="email" className="login-label">
                 Email address
@@ -102,8 +154,8 @@ function Login() {
                 </a>
               </div>
 
-              <button type="submit" className="login-submit" disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign in'}
+              <button type="submit" className="login-submit" disabled={loading || betaChecking}>
+                {betaChecking ? 'Checking access…' : loading ? 'Signing in...' : 'Sign in'}
               </button>
             </form>
 

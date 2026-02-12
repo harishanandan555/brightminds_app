@@ -4,11 +4,12 @@ import storage from 'redux-persist/lib/storage';
 import authReducer from './slices/authSlice';
 import projectReducer from './slices/projectSlice';
 import parentReducer from './slices/parentSlice';
+import betaReducer from './slices/betaSlice';
 
 const persistConfig = {
     key: 'root',
     storage,
-    whitelist: ['auth'], // Only persist auth slice
+    whitelist: ['token', 'user', 'isAuthenticated', 'role'], // Persist essential auth data
 };
 
 const persistedReducer = persistReducer(persistConfig, authReducer);
@@ -18,6 +19,7 @@ export const store = configureStore({
         auth: persistedReducer,
         projects: projectReducer,
         parent: parentReducer,
+        beta: betaReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
